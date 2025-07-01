@@ -1,0 +1,36 @@
+services:
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+    command: vault server -dev
+
+  kong:
+    image: kong:3.6
+    container_name: kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_PROXY_LISTEN: "0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    volumes:
+      - ./kong.yml:/usr/local/kong/declarative/kong.yml
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-key-manager
+    env_file: .env
+    depends_on:
+      - vault
+      - kong

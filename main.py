@@ -1,27 +1,25 @@
-from dotenv import load_dotenv
-load_dotenv()
-
+from fastapi import FastAPI, Request, HTTPException
 from key_generator import generate_unique_key
-from password_store import store_key_in_password_store
-from kong_store import store_key_in_kong
+from password_store import store_password, retrieve_password
 
-def main():
-    key = generate_unique_key("secrets")
-    print(f"Generated Key: {key}")
+app = FastAPI()
 
-    print("Storing in Vault...")
-    success_store = store_key_in_password_store(key)
-    print(f"Vault store result: {success_store}")
+@app.get("/generate")
+def generate():
+    key = generate_unique_key()
+    return {"key": key}
 
-    print("Storing in Kong...")
-    success_kong = store_key_in_kong(key)
-    print(f"Kong store result: {success_kong}")
+@app.post("/store/{password_id}")
+def store(password_id: str, password: str = "default_pass"):
+    result = store_password(password_id, password)
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+    return result
 
-    print({
-        "key": key,
-        "vault_stored": success_store,
-        "kong_stored": success_kong
-    })
+@app.get("/retrieve/{password_id}")
+def retrieve(password_id: str):
+    result = retrieve_password(password_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
-if __name__ == "__main__":
-    main()

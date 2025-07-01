@@ -1,8 +1,20 @@
 _format_version: "3.0"
 consumers:
   - username: api-consumer
+    keyauth_credentials:
+      - key: my-secret-api-key
+
+services:
+  - name: api-service
+    url: http://api-key-manager:5000
+    routes:
+      - name: api-route
+        paths:
+          - /
+
 plugins:
   - name: key-auth
     config:
       key_names:
         - apikey
+

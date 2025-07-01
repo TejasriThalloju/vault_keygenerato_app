@@ -1,4 +1,15 @@
+version: "3.8"
+
 services:
+  api-key-manager:
+    build: .
+    ports:
+      - "5000:5000"  # 👈 This line exposes port 5000
+    depends_on:
+      - vault
+      - kong
+    env_file:
+      - .env
   vault:
     image: hashicorp/vault:1.15
     container_name: vault
@@ -14,17 +25,27 @@ services:
   kong:
     image: kong:3.6
     container_name: kong
+    ports:
+      - "8000:8000"   # proxy (http)
+      - "8001:8001"   # admin (http)
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
-      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
-      KONG_PROXY_LISTEN: "0.0.0.0:8000"
-    ports:
-      - "8000:8000"
-      - "8001:8001"
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
     volumes:
       - ./kong.yml:/usr/local/kong/declarative/kong.yml
 
+  app:
+    build: .
+    container_name: api-key-manager
+    ports:
+      - "5000:5000"
+    depends_on:
+      - vault
+    command: uvicorn main:app --host 0.0.0.0 --port 5000      
   app:
     build:
       context: .
@@ -34,3 +55,5 @@ services:
     depends_on:
       - vault
       - kong
+
+

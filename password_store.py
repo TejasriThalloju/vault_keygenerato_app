@@ -1,32 +1,39 @@
 import os
-import requests
+import hvac
 
-VAULT_ADDR = os.getenv("VAULT_ADDR", "http://localhost:8200")
-VAULT_TOKEN = os.getenv("VAULT_TOKEN")
-SECRET_PATH = os.getenv("SECRET_PATH", "secret/data/api_key")
+VAULT_ADDR = os.getenv("VAULT_ADDR", "http://vault:8200")
+VAULT_TOKEN = os.getenv("VAULT_TOKEN", "root")
 
-def store_key_in_password_store(key: str) -> bool:
-    print(f"Storing key in password store: {key}")
-
-    if not VAULT_TOKEN:
-        print("Vault token not provided.")
-        return False
-
-    headers = {
-        "X-Vault-Token": VAULT_TOKEN
-    }
-
-    data = {
-        "data": {
-            "api_key": key
-        }
-    }
-
+def store_password(password_id: str, password: str):
     try:
-        response = requests.post(f"{VAULT_ADDR}/v1/{SECRET_PATH}", json=data, headers=headers)
-        response.raise_for_status()
-        print(f"Stored key in password store at {SECRET_PATH}")
-        return True
-    except requests.RequestException as e:
-        print(f"Error storing key in password store: {e}")
-        return False
+        client = hvac.Client(url=VAULT_ADDR, token=VAULT_TOKEN)
+
+        if not client.is_authenticated():
+            raise Exception("Vault auth failed")
+
+        path = f"myapp_passwords/{password_id}"
+        client.secrets.kv.v2.create_or_update_secret(
+            path=path,
+            secret={"password": password}
+        )
+        return {"message": f"Password stored under ID: {password_id}"}
+
+    except Exception as e:
+        return {"error": f"Vault error: {str(e)}"}
+
+def retrieve_password(password_id: str):
+    try:
+        client = hvac.Client(url=VAULT_ADDR, token=VAULT_TOKEN)
+
+        if not client.is_authenticated():
+            raise Exception("Vault auth failed")
+
+        path = f"myapp_passwords/{password_id}"
+        response = client.secrets.kv.v2.read_secret_version(path=path)
+        password = response["data"]["data"]["password"]
+
+        return {"password_id": password_id, "password": password}
+
+    except Exception as e:
+        return {"error": f"Vault retrieval failed: {str(e)}"}
+

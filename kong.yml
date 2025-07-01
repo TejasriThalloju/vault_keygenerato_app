@@ -1,0 +1,8 @@
+_format_version: "3.0"
+consumers:
+  - username: api-consumer
+plugins:
+  - name: key-auth
+    config:
+      key_names:
+        - apikey
